@@ -1,0 +1,21 @@
+{
+  "name": "orion-challenge-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for generating and scheduling coding challenges for ORION",
+  "main": "index.js",
+  "scripts": {
+    "generate": "node generateChallenges.js",
+    "generate-ai": "node aiChallengeGenerator.js",
+    "schedule": "node scheduleChallenges.js",
+    "schedule-now": "node scheduleChallenges.js --run-now",
+    "test": "node testChallengeGenerator.js",
+    "view": "node viewRecentChallenges.js",
+    "activate": "node activateDailyChallenges.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "mongoose": "^8.0.3",
+    "node-cron": "^3.0.3",
+    "openai": "^4.86.1"
+  }
+} 

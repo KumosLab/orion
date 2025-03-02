@@ -1,0 +1,45 @@
+orion/
+├── config/
+│   ├── database.js        # MongoDB connection configuration
+│   └── openai.js          # OpenAI API configuration
+├── controllers/
+│   ├── authController.js  # Authentication logic
+│   ├── gameController.js  # Game logic
+│   └── userController.js  # User management logic
+├── middleware/
+│   ├── auth.js            # Authentication middleware
+│   └── errorHandler.js    # Error handling middleware
+├── models/
+│   ├── Challenge.js       # Daily programming challenges
+│   ├── Leaderboard.js     # User rankings
+│   └── User.js            # User model
+├── public_html/
+│   ├── css/
+│   │   ├── main.css       # Main stylesheet
+│   │   ├── auth.css       # Auth pages styles
+│   │   └── game.css       # Game styles
+│   ├── js/
+│   │   ├── auth.js        # Auth functionality
+│   │   ├── game.js        # Game functionality
+│   │   ├── settings.js    # Settings functionality
+│   │   └── leaderboard.js # Leaderboard functionality
+│   ├── index.html         # Main HTML page
+│   ├── game.html          # Game page
+│   ├── leaderboard.html   # Leaderboard page
+│   └── settings.html      # Settings page
+├── routes/
+│   ├── authRoutes.js      # Authentication routes
+│   ├── gameRoutes.js      # Game routes
+│   └── userRoutes.js      # User routes
+├── scripts/
+│   ├── generateChallenges.js # Daily challenge generator
+│   └── cleanupOldData.js     # Database maintenance
+├── utils/
+│   ├── codeValidator.js   # Validate user code solutions
+│   ├── logger.js          # Logging utility
+│   └── openaiHelper.js    # OpenAI integration helper
+├── .env                   # Environment variables (outside public_html)
+├── .gitignore             # Git ignore file
+├── app.js                 # Express application
+├── package.json           # Project dependencies
+└── server.js              # Main server file

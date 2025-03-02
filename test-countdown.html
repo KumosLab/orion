@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Countdown Timer Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    
+    .countdown-timer {
+      background: linear-gradient(135deg, #4361ee, #3a0ca3);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+      width: 400px;
+    }
+    
+    .countdown-timer::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(45deg, 
+        rgba(255, 255, 255, 0.1) 25%, 
+        transparent 25%, 
+        transparent 50%, 
+        rgba(255, 255, 255, 0.1) 50%, 
+        rgba(255, 255, 255, 0.1) 75%, 
+        transparent 75%, 
+        transparent);
+      background-size: 20px 20px;
+      opacity: 0.2;
+      animation: moveStripes 2s linear infinite;
+    }
+    
+    @keyframes moveStripes {
+      0% { background-position: 0 0; }
+      100% { background-position: 20px 0; }
+    }
+    
+    .countdown-timer h3 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+      position: relative;
+      font-weight: 600;
+    }
+    
+    .time-parts {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+    
+    .time-part {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .time-value {
+      font-size: 32px;
+      font-weight: bold;
+      min-width: 60px;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      padding: 5px 10px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .time-label {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-top: 5px;
+      font-weight: 500;
+    }
+    
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      background-color: #4361ee;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background-color: #3a0ca3;
+    }
+  </style>
+</head>
+<body>
+  <div class="countdown-timer" id="countdownTimer">
+    <h3>Next Challenge Available In</h3>
+    <div class="time-parts">
+      <div class="time-part">
+        <div id="countdown-hours" class="time-value">00</div>
+        <div class="time-label">Hours</div>
+      </div>
+      <div class="time-part">
+        <div id="countdown-minutes" class="time-value">00</div>
+        <div class="time-label">Minutes</div>
+      </div>
+      <div class="time-part">
+        <div id="countdown-seconds" class="time-value">00</div>
+        <div class="time-label">Seconds</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="showBtn">Show Timer</button>
+      <button id="hideBtn">Hide Timer</button>
+    </div>
+  </div>
+
+  <script>
+    let countdownInterval = null;
+    
+    // Update countdown timer
+    function updateCountdown() {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      const timeRemaining = tomorrow - now;
+      
+      if (timeRemaining <= 0) {
+        // Refresh the page if it's time for a new challenge
+        window.location.reload();
+        return;
+      }
+      
+      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+      
+      document.getElementById('countdown-hours').textContent = hours.toString().padStart(2, '0');
+      document.getElementById('countdown-minutes').textContent = minutes.toString().padStart(2, '0');
+      document.getElementById('countdown-seconds').textContent = seconds.toString().padStart(2, '0');
+    }
+    
+    // Start countdown
+    function startCountdown() {
+      // Clear any existing interval
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+      
+      // Update countdown immediately
+      updateCountdown();
+      
+      // Update countdown every second
+      countdownInterval = setInterval(updateCountdown, 1000);
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      startCountdown();
+      
+      // Add event listeners for buttons
+      document.getElementById('showBtn').addEventListener('click', () => {
+        document.getElementById('countdownTimer').style.display = 'block';
+      });
+      
+      document.getElementById('hideBtn').addEventListener('click', () => {
+        document.getElementById('countdownTimer').style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html> 
