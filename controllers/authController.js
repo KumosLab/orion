@@ -233,42 +233,82 @@ exports.protect = async (req, res, next) => {
 // Check if user is logged in for rendered pages
 exports.isLoggedIn = async (req, res, next) => {
   try {
+    console.log('[AUTH CHECK] Request received');
+    console.log('[AUTH CHECK] Cookies:', req.cookies);
+    console.log('[AUTH CHECK] Headers:', {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      host: req.headers.host,
+      'user-agent': req.headers['user-agent']
+    });
+    
     if (req.cookies.jwt) {
-      // Verify token
-      const decoded = await promisify(jwt.verify)(
-        req.cookies.jwt,
-        process.env.JWT_SECRET
-      );
+      console.log('[AUTH CHECK] JWT cookie found:', req.cookies.jwt.substring(0, 10) + '...');
+      try {
+        // Verify token
+        const decoded = await promisify(jwt.verify)(
+          req.cookies.jwt,
+          process.env.JWT_SECRET
+        );
+        console.log('[AUTH CHECK] Token decoded successfully. User ID:', decoded.id);
 
-      // Check if user still exists
-      const currentUser = await User.findById(decoded.id);
-      if (!currentUser) {
-        return next();
-      }
-
-      // Check if user changed password after token was issued
-      if (currentUser.changedPasswordAfter(decoded.iat)) {
-        return next();
-      }
-
-      // User is logged in
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          user: currentUser
+        // Check if user still exists
+        const currentUser = await User.findById(decoded.id);
+        
+        if (!currentUser) {
+          console.log('[AUTH CHECK] User not found in database');
+          return res.status(401).json({
+            status: 'fail',
+            message: 'User not found'
+          });
         }
+        
+        console.log('[AUTH CHECK] User found:', currentUser.username);
+
+        // Check if user changed password after token was issued
+        if (currentUser.changedPasswordAfter(decoded.iat)) {
+          console.log('[AUTH CHECK] Password changed after token issued');
+          return res.status(401).json({
+            status: 'fail',
+            message: 'Password changed recently'
+          });
+        }
+
+        // User is logged in
+        console.log('[AUTH CHECK] Authentication successful');
+        
+        // Remove sensitive data
+        const userObject = currentUser.toObject();
+        delete userObject.password;
+        
+        // Send response
+        return res.status(200).json({
+          status: 'success',
+          data: {
+            user: userObject
+          }
+        });
+      } catch (verifyError) {
+        console.error('[AUTH CHECK] Token verification error:', verifyError.message);
+        return res.status(401).json({
+          status: 'fail',
+          message: 'Invalid token',
+          error: verifyError.message
+        });
+      }
+    } else {
+      console.log('[AUTH CHECK] No JWT cookie found');
+      return res.status(401).json({
+        status: 'fail',
+        message: 'Not logged in'
       });
     }
-    
-    // Not logged in
-    res.status(401).json({
-      status: 'fail',
-      message: 'Not logged in'
-    });
   } catch (err) {
-    res.status(401).json({
-      status: 'fail',
-      message: 'Not logged in'
+    console.error('[AUTH CHECK] Error:', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Something went wrong checking authentication',
+      error: err.message
     });
   }
 };

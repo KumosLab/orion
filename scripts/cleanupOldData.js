@@ -4,18 +4,22 @@ const logger = require('../utils/logger');
 require('dotenv').config();
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-  .then(() => {
-    logger.info('Connected to MongoDB for cleanup');
-    performCleanup();
-  })
-  .catch(err => {
-    logger.error('Failed to connect to MongoDB for cleanup:', { error: err.message });
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    logger.error('Error connecting to MongoDB:', { error: error.message });
     process.exit(1);
-  });
+  }
+};
+
+// Connect to the database
+connectDB();
 
 // Perform database cleanup
 const performCleanup = async () => {
@@ -47,7 +51,28 @@ const performCleanup = async () => {
     
     logger.info(`Deactivated ${deactivatedChallenges.modifiedCount} expired challenges`);
     
-    // Any other cleanup tasks can be added here
+    // Remove challenges that have been completed or failed by users
+    // This is a new addition to clean up the database more aggressively
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1); // Keep completed challenges for at least 1 day
+    
+    const completedOrFailedChallenges = await Challenge.deleteMany({
+      $and: [
+        { createdAt: { $lt: oneDayAgo } },
+        { 
+          $or: [
+            { completedBy: { $exists: true, $not: { $size: 0 } } },
+            { failedBy: { $exists: true, $not: { $size: 0 } } }
+          ]
+        }
+      ]
+    });
+    
+    logger.info(`Removed ${completedOrFailedChallenges.deletedCount} completed or failed challenges`);
+    
+    // Call the static cleanup method on the Challenge model
+    const cleanupResult = await Challenge.cleanup();
+    logger.info(`Challenge.cleanup() removed ${cleanupResult.expiredRemoved + cleanupResult.completedRemoved} challenges`);
     
     logger.info('Database cleanup completed successfully');
     
@@ -66,6 +91,9 @@ const performCleanup = async () => {
     process.exit(1);
   }
 };
+
+// Run the cleanup
+performCleanup();
 
 // Handle process termination
 process.on('SIGINT', async () => {

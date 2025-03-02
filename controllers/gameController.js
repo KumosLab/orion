@@ -387,8 +387,10 @@ exports.submitAnswer = async (req, res) => {
     
     // Verify the answer
     let isCorrect;
+    let verificationResult;
     try {
-      isCorrect = await verifyCode(challenge.correctAnswer, answer, challenge.language);
+      verificationResult = await verifyCode(challenge.correctAnswer, answer, challenge.language);
+      isCorrect = verificationResult.success;
     } catch (error) {
       console.error('Error verifying code:', error);
       return res.status(500).json({
@@ -397,17 +399,17 @@ exports.submitAnswer = async (req, res) => {
       });
     }
     
+    // Get user
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
     if (isCorrect) {
-      // Update user stats
-      const user = await User.findById(req.user.id);
-      
-      if (!user) {
-        return res.status(404).json({
-          status: 'fail',
-          message: 'User not found'
-        });
-      }
-      
       // Calculate XP based on difficulty and attempts
       let xpGained = challenge.xpReward * (1 - (attemptNumber - 1) * 0.15);
       xpGained = Math.max(Math.floor(xpGained), challenge.xpReward * 0.25); // Min 25% of original XP
@@ -422,6 +424,10 @@ exports.submitAnswer = async (req, res) => {
       
       // Add challenge to completed challenges
       user.addCompletedChallenge(challengeId);
+      
+      // Add user to challenge's completedBy array
+      challenge.completedBy.push(user._id);
+      await challenge.save();
       
       try {
         await user.save();
@@ -463,73 +469,54 @@ exports.submitAnswer = async (req, res) => {
         });
       }
     } else {
-      // Wrong answer
-      if (attemptNumber === 5) {
-        // Last attempt - update streak and count loss
-        const user = await User.findById(req.user.id);
+      // Handle incorrect answer
+      
+      // If this is the last attempt (5th attempt), mark as failed
+      if (attemptNumber >= 5) {
+        // Add user to challenge's failedBy array
+        challenge.failedBy.push(user._id);
+        await challenge.save();
         
-        if (!user) {
-          return res.status(404).json({
-            status: 'fail',
-            message: 'User not found'
-          });
-        }
-        
-        user.streak = 0;
+        // Update user stats for failed challenge
         user.losses = (user.losses || 0) + 1;
+        user.streak = 0; // Reset streak on failure
         user.lastPlayed = new Date();
-        
-        // Increment games played
         user.gamesPlayed = (user.gamesPlayed || 0) + 1;
         
-        try {
-          await user.save();
-          
-          // Update leaderboard with additional stats
-          await Leaderboard.updateEntry(user._id, {
-            username: user.username,
-            xp: user.xp,
-            level: user.level,
-            wins: user.wins,
-            streak: user.streak,
-            losses: user.losses || 0,
-            gamesPlayed: user.gamesPlayed || 0
-          });
-          
-          return res.status(200).json({
-            status: 'success',
-            data: {
-              correct: false,
-              attemptsRemaining: 0,
-              gameOver: true,
-              hint: challenge.hints[Math.min(attemptNumber - 1, challenge.hints.length - 1)],
-              explanation: challenge.explanation
-            }
-          });
-        } catch (error) {
-          console.error('Error updating user stats:', error);
-          return res.status(500).json({
-            status: 'error',
-            message: 'Error updating user stats. Please try again.'
-          });
-        }
-      } else {
-        // Still has attempts remaining
-        return res.status(200).json({
-          status: 'success',
-          data: {
-            correct: false,
-            attemptsRemaining: 5 - attemptNumber,
-            hint: challenge.hints[Math.min(attemptNumber - 1, challenge.hints.length - 1)]
-          }
+        await user.save();
+        
+        // Update leaderboard
+        await Leaderboard.updateEntry(user._id, {
+          username: user.username,
+          xp: user.xp,
+          level: user.level,
+          wins: user.wins,
+          streak: user.streak,
+          losses: user.losses || 0,
+          gamesPlayed: user.gamesPlayed || 0
         });
       }
+      
+      // Provide detailed feedback from the validator
+      let feedbackMessage = 'Your answer is incorrect. Please try again.';
+      if (verificationResult && verificationResult.feedback && verificationResult.feedback.length > 0) {
+        feedbackMessage = verificationResult.feedback.join(' ');
+      }
+      
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          correct: false,
+          attemptsRemaining: 5 - attemptNumber,
+          feedback: feedbackMessage
+        }
+      });
     }
   } catch (err) {
-    console.error(err);
-    res.status(500).json({
+    console.error('Error submitting answer:', err);
+    return res.status(500).json({
       status: 'error',
-      message: 'Something went wrong. Please try again.'
+      message: 'Something went wrong. Please try again later.'
     });
   }
 };
